@@ -2,8 +2,9 @@ import os
 from flask import Flask
 from pyrogram import Client
 import logging
+import atexit
 
-# Activa el logging para debug
+# Activar logging para debug
 logging.basicConfig(level=logging.INFO)
 
 # Cargar variables de entorno
@@ -11,7 +12,7 @@ api_id = int(os.environ.get("API_ID"))
 api_hash = os.environ.get("API_HASH")
 session_string = os.environ.get("SESSION_STRING")
 
-# Inicializar bot de Pyrogram
+# Inicializar Pyrogram Client
 app_pyrogram = Client(
     name="my_bot",
     api_id=api_id,
@@ -28,10 +29,19 @@ def start_bot():
     app_pyrogram.start()
     print("✅ Bot iniciado exitosamente.")
 
+# Detener el bot al cerrar la app
+def stop_bot():
+    print("Cerrando bot de Pyrogram...")
+    app_pyrogram.stop()
+    print("❌ Bot detenido.")
+
+atexit.register(stop_bot)
+
 @app.route("/")
 def home():
-    return "Bot de Telegram está corriendo en Flask con Pyrogram ✅"
+    return "✅ Bot de Telegram está corriendo en Flask con Pyrogram"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 3000))
     app.run(host="0.0.0.0", port=port)
+
