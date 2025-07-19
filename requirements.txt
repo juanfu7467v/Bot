@@ -1,3 +1,4 @@
-flask
-pyrogram
-tgcrypto
+python3 main.py
+ls
+pip install nombre_paquete
+
