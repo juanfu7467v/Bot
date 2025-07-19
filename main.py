@@ -1,46 +1,29 @@
-from flask import Flask, request
-from pyrogram import Client
-import asyncio
+from pyrogram import Client, filters
+from pyrogram.types import Message
 import os
 
-api_id = int(os.environ.get("API_ID"))
-api_hash = os.environ.get("API_HASH")
-session_string = os.environ.get("SESSION_STRING")  # Generado previamente con pyrogram
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+SESSION_STRING = os.environ.get("SESSION_STRING")
 
-app = Flask(__name__)
+app = Client(name="my_bot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-bot = Client("my_account", api_id=api_id, api_hash=api_hash, session_string=session_string)
+# ID del bot a quien se envían los comandos, por ejemplo: @LEDER_BOT
+DESTINO_BOT = "LEDER_BOT"  # sin @
 
-@app.route("/consulta", methods=["GET"])
-def consulta():
-    dni = request.args.get("dni")
-    if not dni or not dni.isdigit() or len(dni) != 8:
-        return {"status": "error", "message": "DNI inválido"}, 400
+@app.on_message(filters.private & filters.text)
+async def handle_command(client: Client, message: Message):
+    texto = message.text
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    result = loop.run_until_complete(enviar_y_esperar(dni))
-    return result
+    # Enviamos el mensaje al bot objetivo
+    enviado = await client.send_message(chat_id=DESTINO_BOT, text=texto)
 
-async def enviar_y_esperar(dni):
-    numero_bot = "LederDataBot"
-    mensaje = f"/dni{dni}"
+    # Esperamos su respuesta
+    respuesta = await app.listen(DESTINO_BOT, timeout=20)
 
-    async with bot:
-        enviado = await bot.send_message(numero_bot, mensaje)
-        await asyncio.sleep(5)  # Espera por la respuesta (ajustable)
+    # Reenviamos la respuesta al usuario
+    await message.reply(respuesta.text)
 
-        respuestas = []
-        async for msg in bot.get_chat_history(numero_bot, limit=5):
-            if msg.reply_to_message and msg.reply_to_message.id == enviado.id:
-                respuestas.append(msg.text)
-
-        if respuestas:
-            return {"status": "ok", "data": respuestas[0]}
-        else:
-            return {"status": "error", "message": "No se recibió respuesta"}
-
-# Inicia el cliente fuera del decorador
 if __name__ == "__main__":
-    bot.start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
+    print("✅ Bot en funcionamiento...")
+    app.run()
