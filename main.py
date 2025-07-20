@@ -1,40 +1,46 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from pyrogram import Client
 import os
 import asyncio
 
-# Crear app Flask
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+SESSION_STRING = os.getenv("SESSION_STRING")
+XDATA_NUMERO = "51999999999@c.us"  # Reemplaza con el número correcto si es necesario
+
 app = Flask(__name__)
 
-# Variables de entorno desde Railway
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
-SESSION_STRING = os.environ.get("SESSION_STRING")
+# Inicializa el cliente de Pyrogram
+app_client = Client(
+    name="my_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 
-# Inicializar cliente de Pyrogram
-client = Client("my_session", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
-
-# Iniciar cliente de Pyrogram al arrancar el servidor
-loop = asyncio.get_event_loop()
-loop.run_until_complete(client.start())
+# Arranca el cliente de Pyrogram
+@app.before_request
+def ensure_client_started():
+    if not app_client.is_connected:
+        asyncio.run(app_client.start())
 
 @app.route("/")
 def index():
-    return "✅ Bot activo con Pyrogram"
+    return "✅ Bot de envío de DNI activo."
 
 @app.route("/dni", methods=["GET"])
-def buscar_dni():
+def enviar_mensaje():
     dni = request.args.get("dni")
     if not dni:
-        return jsonify({"error": "Falta el parámetro 'dni'"}), 400
+        return {"error": "Parámetro 'dni' requerido"}, 400
 
+    mensaje = f"/dni{dni}"
     try:
-        mensaje = f"/dni{dni}"
-        numero_bot = "51999999999@c.us"  # Reemplaza con el número correcto del bot
-        loop.run_until_complete(client.send_message(numero_bot, mensaje))
-        return jsonify({"status": "Mensaje enviado correctamente"})
+        asyncio.run(app_client.send_message("me", f"🧪 Enviando mensaje a XDATA: {mensaje}"))
+        asyncio.run(app_client.send_message("51999999999", mensaje))  # Puedes cambiar este número
+        return {"status": "Mensaje enviado correctamente"}, 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e)}, 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
