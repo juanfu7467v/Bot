@@ -1,42 +1,34 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from pyrogram import Client
 import os
-import asyncio
 
-app = Flask(__name__)
-
-API_ID = int(os.environ.get("API_ID", 0))
-API_HASH = os.environ.get("API_HASH", "")
+API_ID = int(os.environ.get("API_ID", "123456"))
+API_HASH = os.environ.get("API_HASH", "your_api_hash")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
 
-if not all([API_ID, API_HASH, SESSION_STRING]):
-    raise Exception("Faltan variables de entorno: API_ID, API_HASH o SESSION_STRING")
-
-client = Client(
-    name="anon",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=SESSION_STRING
-)
+app = Flask(__name__)
+pyro_client = Client("bot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
 @app.route("/")
 def home():
-    return "Bot de Pyrogram funcionando correctamente."
+    return "Bot funcionando correctamente."
 
-@app.route("/enviar", methods=["GET"])
-def enviar_mensaje():
-    numero = request.args.get("numero")
-    mensaje = request.args.get("mensaje")
+@app.route("/enviar", methods=["POST"])
+def enviar():
+    data = request.get_json()
+    chat_id = data.get("chat_id")
+    mensaje = data.get("mensaje")
 
-    if not numero or not mensaje:
-        return "Faltan parámetros ?numero=...&mensaje=..."
+    if not chat_id or not mensaje:
+        return jsonify({"error": "chat_id y mensaje son requeridos"}), 400
 
-    async def enviar():
-        async with client:
-            await client.send_message(numero, mensaje)
+    async def enviar_mensaje():
+        async with pyro_client:
+            await pyro_client.send_message(chat_id, mensaje)
 
-    asyncio.run(enviar())
-    return f"Mensaje enviado a {numero}."
+    import asyncio
+    asyncio.run(enviar_mensaje())
+    return jsonify({"status": "Mensaje enviado con éxito"})
 
 if __name__ == "__main__":
-    app.run(debug=False, port=3000)
+    app.run(host="0.0.0.0", port=3000)
