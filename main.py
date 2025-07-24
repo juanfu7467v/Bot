@@ -1,6 +1,5 @@
 from flask import Flask
 from pyrogram import Client
-import asyncio
 import os
 
 app = Flask(__name__)
@@ -10,27 +9,23 @@ API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
 bot = Client(
-    name="my_bot",
+    name="bot_session",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
 
-# Función para iniciar el bot en segundo plano
-def start_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(bot.start())
-    print("✅ Bot de Pyrogram iniciado")
-
-# Iniciar el bot cuando Flask arranca
-@app.before_serving
-async def startup():
-    asyncio.create_task(bot.start())
-
 @app.route('/')
-def home():
-    return "✅ Bot corriendo en Railway"
+def index():
+    return 'Bot corriendo en Pyrogram + Flask con Railway'
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+@app.route('/enviar/<int:user_id>/<mensaje>')
+def enviar_mensaje(user_id, mensaje):
+    async def send():
+        await bot.send_message(user_id, mensaje)
+    bot.run(send())
+    return f"Mensaje enviado a {user_id}: {mensaje}"
+
+if __name__ == "__main__":
+    bot.start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
