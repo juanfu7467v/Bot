@@ -25,9 +25,9 @@ pyro_client_started = False
 
 # --- Hooks del Ciclo de Vida de Flask para el Cliente de Pyrogram ---
 
-# NOTA IMPORTANTE: El decorador "@app.before_first_request" HA SIDO ELIMINADO.
-# Ahora usamos "@app.before_request" para iniciar el cliente de Pyrogram
-# de forma condicional solo la primera vez.
+# NOTA IMPORTANTE: El decorador "@app.before_first_request" HA SIDO ELIMINADO EN FLASK 2.3+.
+# EN SU LUGAR, usamos "@app.before_request" para iniciar el cliente de Pyrogram
+# de forma condicional solo la primera vez que se recibe una solicitud.
 @app.before_request
 async def ensure_pyro_client_started():
     """
