@@ -1,30 +1,45 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 from pyrogram import Client
 import os
-import asyncio
+
+# Reemplaza con tu Session String de usuario
+SESSION_STRING = os.environ.get("SESSION_STRING")  # Puedes definirlo en variables de entorno
+
+API_ID = int(os.environ.get("API_ID", "123456"))  # Coloca aquí tu API_ID de my.telegram.org
+API_HASH = os.environ.get("API_HASH", "tu_api_hash")  # Coloca tu API_HASH
 
 app = Flask(__name__)
 
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
-SESSION_STRING = os.environ.get("SESSION_STRING")
+# Crea el cliente de Pyrogram
+pyro_client = Client(
+    name="my_session",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 
-loop = asyncio.get_event_loop()
-client = Client(name="bot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
+# Inicia el cliente antes de la primera solicitud
+@app.before_request
+def start_pyrogram():
+    if not pyro_client.is_connected:
+        pyro_client.connect()
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Servidor Flask y Pyrogram funcionando correctamente."})
+    return "Servidor funcionando correctamente."
 
-@app.route("/me")
-def get_me():
-    async def fetch_user():
-        async with client:
-            me = await client.get_me()
-            return me.username or me.first_name
+@app.route("/enviar", methods=["GET"])
+def enviar_mensaje():
+    try:
+        chat_id = request.args.get("chat_id")
+        mensaje = request.args.get("mensaje")
+        if not chat_id or not mensaje:
+            return jsonify({"error": "chat_id y mensaje son requeridos"}), 400
 
-    username = loop.run_until_complete(fetch_user())
-    return jsonify({"me": username})
+        pyro_client.send_message(chat_id, mensaje)
+        return jsonify({"status": "mensaje enviado"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=3000)
