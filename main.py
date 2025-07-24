@@ -1,45 +1,46 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from pyrogram import Client
 import os
+import asyncio
 
-# Reemplaza con tu Session String de usuario
-SESSION_STRING = os.environ.get("SESSION_STRING")  # Puedes definirlo en variables de entorno
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+SESSION_STRING = os.getenv("SESSION_STRING")
 
-API_ID = int(os.environ.get("API_ID", "123456"))  # Coloca aquí tu API_ID de my.telegram.org
-API_HASH = os.environ.get("API_HASH", "tu_api_hash")  # Coloca tu API_HASH
+XDATA_NUMERO = "51999999999"  # Cambia al número de XDATA si es necesario
 
 app = Flask(__name__)
 
-# Crea el cliente de Pyrogram
-pyro_client = Client(
-    name="my_session",
+# Cliente Pyrogram global
+app_client = Client(
+    name="my_bot",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
 
-# Inicia el cliente antes de la primera solicitud
-@app.before_request
-def start_pyrogram():
-    if not pyro_client.is_connected:
-        pyro_client.connect()
+# Iniciamos el cliente de Pyrogram una sola vez
+loop = asyncio.get_event_loop()
+loop.run_until_complete(app_client.start())
 
 @app.route("/")
-def home():
-    return "Servidor funcionando correctamente."
+def index():
+    return "✅ Bot de envío de DNI activo."
 
-@app.route("/enviar", methods=["GET"])
+@app.route("/dni", methods=["GET"])
 def enviar_mensaje():
-    try:
-        chat_id = request.args.get("chat_id")
-        mensaje = request.args.get("mensaje")
-        if not chat_id or not mensaje:
-            return jsonify({"error": "chat_id y mensaje son requeridos"}), 400
+    dni = request.args.get("dni")
+    if not dni:
+        return {"error": "Parámetro 'dni' requerido"}, 400
 
-        pyro_client.send_message(chat_id, mensaje)
-        return jsonify({"status": "mensaje enviado"})
+    mensaje = f"/dni{dni}"
+
+    try:
+        loop.run_until_complete(app_client.send_message("me", f"🧪 Enviando mensaje a XDATA: {mensaje}"))
+        loop.run_until_complete(app_client.send_message(XDATA_NUMERO, mensaje))
+        return {"status": "Mensaje enviado correctamente"}, 200
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return {"error": str(e)}, 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
