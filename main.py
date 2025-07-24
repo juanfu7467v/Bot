@@ -1,46 +1,60 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from pyrogram import Client
-import os
+from pyrogram.types import Message
 import asyncio
+import os
 
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 SESSION_STRING = os.getenv("SESSION_STRING")
-XDATA_NUMERO = "51999999999@c.us"  # Reemplaza con el número correcto si es necesario
 
 app = Flask(__name__)
 
-# Inicializa el cliente de Pyrogram
-app_client = Client(
-    name="my_bot",
+bot = Client(
+    name="my_account",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
 )
 
-# Arranca el cliente de Pyrogram
 @app.before_request
 def ensure_client_started():
-    if not app_client.is_connected:
-        asyncio.run(app_client.start())
+    if not bot.is_connected:
+        asyncio.run(bot.start())
 
 @app.route("/")
-def index():
-    return "✅ Bot de envío de DNI activo."
+def home():
+    return "✅ Bot Pyrogram activo."
 
-@app.route("/dni", methods=["GET"])
-def enviar_mensaje():
+@app.route("/consulta", methods=["GET"])
+def consultar_dni():
     dni = request.args.get("dni")
     if not dni:
-        return {"error": "Parámetro 'dni' requerido"}, 400
+        return jsonify({"error": "Parámetro 'dni' es requerido"}), 400
 
     mensaje = f"/dni{dni}"
+
+    async def enviar_y_esperar():
+        # Enviar el mensaje al bot
+        await bot.send_message("@LederDataBot", mensaje)
+
+        # Esperar la respuesta del bot
+        async for response in bot.listen("@LederDataBot", timeout=10):
+            if isinstance(response, Message) and response.text:
+                return response.text
+
+        return None
+
     try:
-        asyncio.run(app_client.send_message("me", f"🧪 Enviando mensaje a XDATA: {mensaje}"))
-        asyncio.run(app_client.send_message("51999999999", mensaje))  # Puedes cambiar este número
-        return {"status": "Mensaje enviado correctamente"}, 200
+        resultado = asyncio.run(enviar_y_esperar())
+
+        if resultado:
+            return jsonify({"respuesta": resultado}), 200
+        else:
+            return jsonify({"error": "No se recibió respuesta del bot."}), 504
+
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
