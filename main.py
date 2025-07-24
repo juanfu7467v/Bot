@@ -2,36 +2,21 @@ from flask import Flask
 from pyrogram import Client
 import os
 
+app = Flask(__name__)
+
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
-app = Flask(__name__)
+bot = Client(name="my_bot", api_id=API_ID, api_hash=API_HASH, session_string=SESSION_STRING)
 
-# Inicializamos Pyrogram Client
-pyro_app = Client(
-    name="anon",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=SESSION_STRING
-)
+@app.route('/')
+def home():
+    return "Bot funcionando correctamente en Railway ✅"
 
 @app.before_first_request
-def startup():
-    pyro_app.start()
+def start_bot():
+    bot.start()
 
-@app.route("/")
-def home():
-    return "Bot Pyrogram funcionando en Railway ✅"
-
-@app.route("/me")
-def get_me():
-    user = pyro_app.get_me()
-    return {
-        "id": user.id,
-        "username": user.username,
-        "first_name": user.first_name
-    }
-
-if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 3000)))
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=3000)
