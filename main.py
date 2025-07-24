@@ -1,27 +1,42 @@
-from flask import Flask
+from flask import Flask, request
 from pyrogram import Client
 import os
-
-api_id = int(os.environ.get("API_ID", "123456"))  # cambia por tus datos reales
-api_hash = os.environ.get("API_HASH", "tu_api_hash")
-session_string = os.environ.get("SESSION_STRING", None)
+import asyncio
 
 app = Flask(__name__)
-bot = Client(name="bot", api_id=api_id, api_hash=api_hash, session_string=session_string)
+
+API_ID = int(os.environ.get("API_ID", 0))
+API_HASH = os.environ.get("API_HASH", "")
+SESSION_STRING = os.environ.get("SESSION_STRING", "")
+
+if not all([API_ID, API_HASH, SESSION_STRING]):
+    raise Exception("Faltan variables de entorno: API_ID, API_HASH o SESSION_STRING")
+
+client = Client(
+    name="anon",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 
 @app.route("/")
 def home():
-    return "✅ Bot activo."
+    return "Bot de Pyrogram funcionando correctamente."
 
-@app.before_first_request
-def start_bot():
-    bot.start()
-    print("🤖 Bot iniciado.")
+@app.route("/enviar", methods=["GET"])
+def enviar_mensaje():
+    numero = request.args.get("numero")
+    mensaje = request.args.get("mensaje")
 
-@app.route("/stop")
-def stop_bot():
-    bot.stop()
-    return "❌ Bot detenido."
+    if not numero or not mensaje:
+        return "Faltan parámetros ?numero=...&mensaje=..."
+
+    async def enviar():
+        async with client:
+            await client.send_message(numero, mensaje)
+
+    asyncio.run(enviar())
+    return f"Mensaje enviado a {numero}."
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, port=3000)
